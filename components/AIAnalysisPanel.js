@@ -78,7 +78,10 @@ export default function AIAnalysisPanel({ analysis, onOptimize }) {
                   </div>
                 )}
                 {onOptimize && (
-                  <button onClick={() => onOptimize(s)}
+                  <button onClick={async () => {
+                    setLoading(prev => ({ ...prev, [i]: true }))
+                    try { await onOptimize(s) } finally { setLoading(prev => ({ ...prev, [i]: false })) }
+                  }}
                     disabled={loading[i]}
                     className="mt-2 text-xs text-blue-600 hover:underline disabled:text-gray-400">
                     {loading[i] ? '优化中...' : '✨ AI 一键优化此模块'}

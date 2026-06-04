@@ -6,7 +6,7 @@ import FileUploader from '../../components/FileUploader'
 import ResumeForm from '../../components/ResumeForm'
 import AIAnalysisPanel from '../../components/AIAnalysisPanel'
 import TemplateSelector from '../../components/TemplateSelector'
-import { DEFAULT_RESUME } from '../../lib/templates'
+import { DEFAULT_RESUME, TEMPLATES } from '../../lib/templates'
 
 export default function EditorPage() {
   const [step, setStep] = useState(1) // 1: 上传/填写, 2: 分析, 3: 模板导出
@@ -16,6 +16,10 @@ export default function EditorPage() {
   const [analyzeLoading, setAnalyzeLoading] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState('modern')
   const [optimizeResult, setOptimizeResult] = useState(null)
+  const [summaryLoading, setSummaryLoading] = useState(false)
+  const [optimizeLoading, setOptimizeLoading] = useState(false)
+  const [exportLoading, setExportLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
 
   // PDF 上传解析回调
   const handleParsed = useCallback(({ text, parsed }) => {
@@ -36,6 +40,7 @@ export default function EditorPage() {
   // AI 分析简历
   const handleAnalyze = async () => {
     setAnalyzeLoading(true)
+    setErrorMsg('')
     try {
       const text = rawText || buildResumeText(resumeData)
       const res = await fetch('/api/analyze', {
@@ -44,15 +49,19 @@ export default function EditorPage() {
         body: JSON.stringify({ resumeText: text }),
       })
       const data = await res.json()
+      if (!res.ok) { setErrorMsg(data.error || '分析失败'); return }
       setAnalysis(data.result)
     } catch (err) {
-      console.error('分析失败:', err)
+      setErrorMsg('网络异常，请稍后重试')
+    } finally {
+      setAnalyzeLoading(false)
     }
-    setAnalyzeLoading(false)
   }
 
   // AI 优化某段文字
   const handleOptimize = async (suggestion) => {
+    setOptimizeLoading(true)
+    setErrorMsg('')
     try {
       const res = await fetch('/api/optimize', {
         method: 'POST',
@@ -60,14 +69,19 @@ export default function EditorPage() {
         body: JSON.stringify({ text: suggestion.issue, context: suggestion.category }),
       })
       const data = await res.json()
+      if (!res.ok) { setErrorMsg(data.error || '优化失败'); return }
       setOptimizeResult({ category: suggestion.category, result: data.result })
     } catch (err) {
-      console.error('优化失败:', err)
+      setErrorMsg('网络异常，请稍后重试')
+    } finally {
+      setOptimizeLoading(false)
     }
   }
 
   // 生成个人简介
   const handleGenerateSummary = async () => {
+    setSummaryLoading(true)
+    setErrorMsg('')
     try {
       const res = await fetch('/api/summary', {
         method: 'POST',
@@ -75,9 +89,34 @@ export default function EditorPage() {
         body: JSON.stringify({ resumeData }),
       })
       const data = await res.json()
+      if (!res.ok) { setErrorMsg(data.error || '生成失败'); return }
       setResumeData(prev => ({ ...prev, summary: data.result }))
     } catch (err) {
-      console.error('生成失败:', err)
+      setErrorMsg('网络异常，请稍后重试')
+    } finally {
+      setSummaryLoading(false)
+    }
+  }
+
+  // 导出 PDF
+  const handleExportPDF = async () => {
+    setExportLoading(true)
+    try {
+      const el = document.getElementById('resume-preview')
+      if (!el) return
+      const html2canvas = (await import('html2canvas')).default
+      const { jsPDF } = await import('jspdf')
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true })
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+      pdf.save(`${resumeData.name || 'resume'}_简历.pdf`)
+    } catch (err) {
+      setErrorMsg('PDF 导出失败，请尝试使用浏览器打印')
+    } finally {
+      setExportLoading(false)
     }
   }
 
@@ -123,6 +162,13 @@ export default function EditorPage() {
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
+        {errorMsg && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex justify-between items-center">
+            <span>{errorMsg}</span>
+            <button onClick={() => setErrorMsg('')} className="text-red-400 hover:text-red-600 ml-4">✕</button>
+          </div>
+        )}
+
         {/* Step 1: 填写简历 */}
         {step === 1 && (
           <div className="space-y-6">
@@ -130,9 +176,9 @@ export default function EditorPage() {
             <div className="text-center text-sm text-gray-400">—— 或者手动填写 ——</div>
             <ResumeForm data={resumeData} onChange={setResumeData} />
             <div className="flex gap-3">
-              <button onClick={handleGenerateSummary}
-                className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition text-sm">
-                ✨ AI 生成个人简介
+              <button onClick={handleGenerateSummary} disabled={summaryLoading}
+                className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 disabled:opacity-50 transition text-sm">
+                {summaryLoading ? '生成中...' : '✨ AI 生成个人简介'}
               </button>
               <button onClick={() => { setRawText(buildResumeText(resumeData)); setStep(2) }}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
@@ -189,11 +235,14 @@ export default function EditorPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-4">
               <TemplateSelector selected={selectedTemplate} onSelect={setSelectedTemplate} />
-              <button onClick={() => window.print()}
-                className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-lg">
-                📥 导出 PDF
+              <button onClick={handleExportPDF} disabled={exportLoading}
+                className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition font-medium text-lg">
+                {exportLoading ? '导出中...' : '📥 导出 PDF'}
               </button>
-              <p className="text-xs text-gray-400 text-center">使用浏览器打印功能保存为 PDF</p>
+              <button onClick={() => window.print()}
+                className="w-full py-2 text-gray-500 hover:text-gray-700 text-sm">
+                或使用浏览器打印
+              </button>
               <button onClick={() => setStep(2)}
                 className="w-full py-2 text-gray-500 hover:text-gray-700 text-sm">
                 ← 返回修改
@@ -212,13 +261,8 @@ export default function EditorPage() {
 
 // 简历预览组件
 function ResumePreview({ data, template = 'modern' }) {
-  const templates = {
-    classic: { primary: '#1a1a2e', headerBg: '#f8f9fa', accent: '#333' },
-    modern: { primary: '#2563eb', headerBg: '#eff6ff', accent: '#1d4ed8' },
-    creative: { primary: '#7c3aed', headerBg: '#faf5ff', accent: '#6d28d9' },
-    minimal: { primary: '#000', headerBg: '#fafafa', accent: '#333' },
-  }
-  const t = templates[template] || templates.modern
+  const cfg = TEMPLATES[template] || TEMPLATES.modern
+  const t = { primary: cfg.colors.primary, headerBg: cfg.colors.headerBg, accent: cfg.colors.accent }
 
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden print:shadow-none print:border-none" id="resume-preview">

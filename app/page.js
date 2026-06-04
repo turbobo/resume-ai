@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
@@ -6,8 +8,8 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
           <span className="text-xl font-bold text-blue-600">✨ ResumeAI</span>
           <div className="flex items-center gap-3">
-            <a href="/login" className="text-sm text-gray-600 hover:text-gray-900">登录</a>
-            <a href="/editor" className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">开始使用</a>
+            <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900">登录</Link>
+            <Link href="/editor" className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">开始使用</Link>
           </div>
         </div>
       </nav>
@@ -23,9 +25,9 @@ export default function Home() {
         <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
           上传简历 PDF → AI 智能分析评分 → 一键优化工作描述 → 选择精美模板 → 导出专业简历
         </p>
-        <a href="/editor" className="inline-block px-8 py-3.5 bg-blue-600 text-white text-lg rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200">
+        <Link href="/editor" className="inline-block px-8 py-3.5 bg-blue-600 text-white text-lg rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200">
           免费开始优化 →
-        </a>
+        </Link>
       </main>
 
       {/* Features */}
@@ -69,9 +71,9 @@ export default function Home() {
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
           <h2 className="text-xl font-bold mb-2">免费开始，按需升级</h2>
           <p className="text-gray-500 mb-4">免费版每天 3 次 AI 分析 · Pro 版 ¥19/月无限使用</p>
-          <a href="/editor" className="inline-block px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+          <Link href="/editor" className="inline-block px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
             立即体验
-          </a>
+          </Link>
         </div>
       </section>
 
