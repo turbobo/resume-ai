@@ -1,0 +1,6 @@
+{
+  "buildCommand": "next build",
+  "installCommand": "npm install",
+  "outputDirectory": ".next",
+  "nodeVersion": "20.11.0"
+}
