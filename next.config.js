@@ -1,9 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // pdfjs worker 配置
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.resolve.alias.canvas = false
+    if (isServer) {
+      config.externals.push('pdfjs-dist')
+    }
     return config
+  },
+  experimental: {
+    serverComponentsExternalPackages: ['pdfjs-dist'],
   },
 }
 
